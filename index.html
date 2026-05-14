@@ -197,6 +197,38 @@
     </div>
   </div>
 
+  <!-- ── Modal: Stages verwalten ── -->
+  <div class="modal-overlay" id="stageManagerOverlay">
+    <div class="modal glass-panel modal-wide">
+      <button class="modal-close" id="stageManagerClose">✕</button>
+      <h3>Stages verwalten</h3>
+      <p class="modal-hint">Stages sind die Lebenszyklusphasen von Daten. Klicke auf ✎ zum Bearbeiten oder ✕ zum Löschen. Alle Zuordnungen einer gelöschten Stage werden entfernt.</p>
+      <button class="small-btn modal-add-btn" id="addStageBtn">+ Neue Stage</button>
+      <div class="store-manager-list" id="stageManagerList"></div>
+    </div>
+  </div>
+
+  <!-- ── Modal: Stage bearbeiten / neu ── -->
+  <div class="modal-overlay" id="stageEditOverlay">
+    <div class="modal glass-panel">
+      <button class="modal-close" id="stageEditClose">✕</button>
+      <h3 id="stageEditTitle">Stage bearbeiten</h3>
+      <div class="form-group">
+        <label>Name</label>
+        <input type="text" id="stageEditName" placeholder="z.B. Archivierung" />
+      </div>
+      <div class="form-group">
+        <label>Emoji</label>
+        <div class="icon-picker" id="stageEmojiPicker"></div>
+      </div>
+      <div class="form-group">
+        <label>Farbe</label>
+        <div class="color-picker" id="stageColorPicker"></div>
+      </div>
+      <button class="primary-btn" id="saveStageEditBtn">Speichern</button>
+    </div>
+  </div>
+
   <!-- ── Toast ── -->
   <div class="toast-container" id="toastContainer"></div>
 
