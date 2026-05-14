@@ -1,6 +1,6 @@
-/* DataCommander – Service Worker v4 */
+/* DataCommander – Service Worker v6 */
 
-const CACHE_NAME = 'datacommander-v4';
+const CACHE_NAME = 'datacommander-v6';
 const ASSETS = [
   '/',
   '/index.html',

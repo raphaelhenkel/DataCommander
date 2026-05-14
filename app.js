@@ -15,16 +15,16 @@ const STAGES = [
 
 // Default stores – saved into state on first run, fully editable after
 const DEFAULT_STORES = [
-  { id: 'local',    label: 'Lokal (Mac)',      icon: '💻', color: '#6c63ff', type: 'local'  },
-  { id: 'icloud',   label: 'iCloud',           icon: '☁️', color: '#00d4ff', type: 'cloud'  },
-  { id: 'google',   label: 'Google Drive',     icon: '☁️', color: '#43e97b', type: 'cloud'  },
-  { id: 'synology', label: 'Synology Drive',   icon: '☁️', color: '#f9ca24', type: 'cloud'  },
-  { id: 'dropbox',  label: 'Dropbox',          icon: '☁️', color: '#0061ff', type: 'cloud'  },
-  { id: 'onedrive', label: 'OneDrive',         icon: '☁️', color: '#0078d4', type: 'cloud'  },
-  { id: 'nas',      label: 'NAS / Heimnetz',   icon: '🖥️', color: '#ff9f43', type: 'local'  },
-  { id: 'usb',      label: 'USB / Extern',     icon: '💿', color: '#a29bfe', type: 'local'  },
-  { id: 'encrypted',label: 'Verschlüsselt',    icon: '🔐', color: '#fd79a8', type: 'local'  },
-  { id: 'iphone',   label: 'iPhone',           icon: '📱', color: '#74b9ff', type: 'device' },
+  { id: 'local',     label: 'Lokal (Mac)',      icon: '💻', color: '#7c6fff', type: 'local'    },
+  { id: 'icloud',    label: 'iCloud',           icon: '☁️', color: '#00d4ff', type: 'cloud'    },
+  { id: 'google',    label: 'Google Drive',     icon: '☁️', color: '#43e97b', type: 'cloud'    },
+  { id: 'synology',  label: 'Synology Drive',   icon: '☁️', color: '#f9ca24', type: 'cloud'    },
+  { id: 'dropbox',   label: 'Dropbox',          icon: '☁️', color: '#0061ff', type: 'cloud'    },
+  { id: 'onedrive',  label: 'OneDrive',         icon: '☁️', color: '#0078d4', type: 'cloud'    },
+  { id: 'nas',       label: 'NAS / Heimnetz',   icon: '🖥️', color: '#ff9f43', type: 'nas'      },
+  { id: 'usb',       label: 'USB / Externe HDD',icon: '💿', color: '#a29bfe', type: 'external' },
+  { id: 'encrypted', label: 'Verschlüsselt',    icon: '🔐', color: '#fd79a8', type: 'local'    },
+  { id: 'iphone',    label: 'iPhone',           icon: '📱', color: '#74b9ff', type: 'device'   },
 ];
 
 const DEFAULT_CATEGORIES = [
@@ -77,10 +77,12 @@ const COLOR_OPTIONS = [
 ];
 
 const STORE_TYPE_OPTIONS = [
-  { value: 'cloud',  label: '☁️ Cloud' },
-  { value: 'local',  label: '💻 Lokal' },
-  { value: 'device', label: '📱 Gerät' },
-  { value: 'other',  label: '📦 Sonstiges' },
+  { value: 'cloud',    label: '☁️ Cloud-Dienst' },
+  { value: 'local',    label: '💻 Lokal / Mac / PC' },
+  { value: 'nas',      label: '🖥️ NAS / Heimserver' },
+  { value: 'device',   label: '📱 Mobiles Gerät' },
+  { value: 'external', label: '💿 Externes Medium (USB, HDD)' },
+  { value: 'other',    label: '📦 Sonstiges' },
 ];
 
 // ── State ─────────────────────────────────────────────────────
@@ -94,6 +96,8 @@ let state = {
   dragItem:    null,
 };
 
+const APP_VERSION = 5;
+
 function loadState() {
   try {
     // Migrate from v2 (had no stores in state) → v3
@@ -102,8 +106,8 @@ function loadState() {
 
     if (v3) {
       const p = JSON.parse(v3);
-      state.categories  = p.categories  || clone(DEFAULT_CATEGORIES);
-      state.stores      = (p.stores && p.stores.length) ? p.stores : clone(DEFAULT_STORES);
+      state.categories  = (p.categories  && p.categories.length)  ? p.categories  : clone(DEFAULT_CATEGORIES);
+      state.stores      = (p.stores      && p.stores.length)      ? p.stores      : clone(DEFAULT_STORES);
       state.assignments = p.assignments || {};
     } else if (v2) {
       // Migrate: carry over categories + assignments, seed default stores
@@ -217,11 +221,11 @@ function getCloudStoreCount(catId) {
 }
 
 function hasOffSiteStore(catId) {
-  // "off-site" = cloud or usb/extern (not local/nas/device)
+  // "off-site" = cloud, external medium, or NAS (not purely local/device)
   for (const stage of STAGES) {
     for (const sid of getAssignment(catId, stage.id)) {
       const store = getStoreById(sid);
-      if (store && (store.type === 'cloud' || store.id === 'usb')) return true;
+      if (store && (store.type === 'cloud' || store.type === 'external' || store.type === 'nas')) return true;
     }
   }
   return false;
@@ -864,15 +868,54 @@ function closeModal() {
   document.getElementById('modalOverlay').classList.remove('open');
 }
 
-// ── Add Category Modal ────────────────────────────────────────
+// ── Category Manager Modal ────────────────────────────────────
 
-function openAddCategoryModal() {
+function openCategoryManager() {
+  renderCatManagerList();
+  document.getElementById('catManagerOverlay').classList.add('open');
+}
+
+function renderCatManagerList() {
+  const list = document.getElementById('catManagerList');
+  list.innerHTML = '';
+  const priorityColors = { low: '#00e676', medium: '#ffb300', high: '#ff8c00', critical: '#ff3d3d' };
+  state.categories.forEach(cat => {
+    const row = document.createElement('div');
+    row.className = 'store-manager-row';
+    row.innerHTML = `
+      <span class="store-mgr-icon">${cat.icon}</span>
+      <span class="store-mgr-label">${cat.label}</span>
+      <span class="chip-priority priority-${cat.priority}" style="width:8px;height:8px;border-radius:50%;background:${priorityColors[cat.priority]};flex-shrink:0"></span>
+      <span style="font-size:0.65rem;color:var(--text-3);flex-shrink:0">${cat.priority}</span>
+      <div class="store-mgr-actions">
+        <button class="icon-btn" data-edit-cat="${cat.id}" title="Bearbeiten">✎</button>
+        <button class="icon-btn danger" data-delete-cat="${cat.id}" title="Löschen">✕</button>
+      </div>`;
+    row.querySelector('[data-edit-cat]').addEventListener('click', () => openCategoryEditForm(cat.id));
+    row.querySelector('[data-delete-cat]').addEventListener('click', () => {
+      if (confirm(`Kategorie "${cat.label}" wirklich löschen? Alle Zuordnungen werden entfernt.`)) {
+        state.categories = state.categories.filter(c => c.id !== cat.id);
+        delete state.assignments[cat.id];
+        saveState();
+        renderCatManagerList();
+        renderCurrentView();
+        showToast(`${cat.icon} ${cat.label} gelöscht`, 'info');
+      }
+    });
+    list.appendChild(row);
+  });
+}
+
+function openCategoryEditForm(catId) {
+  const cat = catId ? getCategoryById(catId) : null;
   const overlay = document.getElementById('addCategoryOverlay');
-  document.getElementById('newCatName').value = '';
+  document.getElementById('catEditTitle').textContent = cat ? 'Kategorie bearbeiten' : 'Neue Kategorie';
+  document.getElementById('newCatName').value = cat?.label || '';
+  document.getElementById('newCatPriority').value = cat?.priority || 'medium';
 
   const iconPicker = document.getElementById('iconPicker');
   iconPicker.innerHTML = '';
-  let selectedIcon = CAT_ICON_OPTIONS[0];
+  let selectedIcon = cat?.icon || CAT_ICON_OPTIONS[0];
   CAT_ICON_OPTIONS.forEach(icon => {
     const opt = document.createElement('div');
     opt.className = 'icon-option' + (icon === selectedIcon ? ' selected' : '');
@@ -887,7 +930,7 @@ function openAddCategoryModal() {
 
   const colorPicker = document.getElementById('colorPicker');
   colorPicker.innerHTML = '';
-  let selectedColor = COLOR_OPTIONS[0];
+  let selectedColor = cat?.color || COLOR_OPTIONS[0];
   COLOR_OPTIONS.forEach(color => {
     const opt = document.createElement('div');
     opt.className = 'color-option' + (color === selectedColor ? ' selected' : '');
@@ -904,11 +947,19 @@ function openAddCategoryModal() {
     const name = document.getElementById('newCatName').value.trim();
     if (!name) { showToast('Bitte einen Namen eingeben', 'error'); return; }
     const priority = document.getElementById('newCatPriority').value;
-    state.categories.push({ id: 'cat_' + Date.now(), label: name, icon: selectedIcon, color: selectedColor, priority, notes: '' });
+    if (cat) {
+      cat.label    = name;
+      cat.icon     = selectedIcon;
+      cat.color    = selectedColor;
+      cat.priority = priority;
+    } else {
+      state.categories.push({ id: 'cat_' + Date.now(), label: name, icon: selectedIcon, color: selectedColor, priority, notes: '' });
+    }
     saveState();
     overlay.classList.remove('open');
+    renderCatManagerList();
     renderCurrentView();
-    showToast(`${selectedIcon} ${name} erstellt`, 'success');
+    showToast(cat ? `${selectedIcon} ${name} aktualisiert` : `${selectedIcon} ${name} erstellt`, 'success');
   };
 
   overlay.classList.add('open');
@@ -989,8 +1040,17 @@ function init() {
   document.getElementById('importBtn').addEventListener('click', importData);
   document.getElementById('resetBtn').addEventListener('click', resetData);
 
-  // Category
-  document.getElementById('addCategoryBtn').addEventListener('click', openAddCategoryModal);
+  // Category manager
+  document.getElementById('manageCategoriesBtn').addEventListener('click', openCategoryManager);
+  document.getElementById('catManagerClose').addEventListener('click', () =>
+    document.getElementById('catManagerOverlay').classList.remove('open'));
+  document.getElementById('catManagerOverlay').addEventListener('click', e => {
+    if (e.target === document.getElementById('catManagerOverlay'))
+      document.getElementById('catManagerOverlay').classList.remove('open');
+  });
+
+  // Add/edit category (opened from manager)
+  document.getElementById('addCategoryBtn').addEventListener('click', () => openCategoryEditForm(null));
   document.getElementById('addCategoryClose').addEventListener('click', () =>
     document.getElementById('addCategoryOverlay').classList.remove('open'));
   document.getElementById('addCategoryOverlay').addEventListener('click', e => {

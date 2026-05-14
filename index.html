@@ -8,7 +8,21 @@
   <meta name="description" content="DataCommander – Deine Datenstrategie auf einen Blick" />
   <link rel="manifest" href="manifest.json" />
   <title>DataCommander</title>
-  <link rel="stylesheet" href="styles.css?v=4" />
+  <link rel="stylesheet" href="styles.css?v=8" />
+  <script>
+    // Boot guard: if stored data has no stores, wipe it so app.js seeds fresh defaults
+    try {
+      var _s = localStorage.getItem('datacommander_v3');
+      if (_s) {
+        var _p = JSON.parse(_s);
+        if (!_p.stores || !_p.stores.length) {
+          localStorage.removeItem('datacommander_v3');
+        }
+      }
+    } catch(e) {
+      localStorage.removeItem('datacommander_v3');
+    }
+  </script>
 </head>
 <body>
   <div class="app-bg"></div>
@@ -56,11 +70,11 @@
         <aside class="categories-panel glass-panel">
           <div class="panel-header">
             <span>Kategorien</span>
-            <button class="small-btn" id="addCategoryBtn">+ Neu</button>
           </div>
           <div class="categories-list" id="categoriesList"></div>
           <div class="panel-footer">
-            <button class="manage-stores-btn" id="manageStoresBtn">🗄 Stores verwalten</button>
+            <button class="panel-action-btn btn-cyan" id="manageCategoriesBtn">☰ Kategorien verwalten</button>
+            <button class="panel-action-btn btn-amber" id="manageStoresBtn">🗄 Stores verwalten</button>
           </div>
         </aside>
 
@@ -99,11 +113,22 @@
     </div>
   </div>
 
-  <!-- ── Modal: Neue Kategorie ── -->
+  <!-- ── Modal: Kategorien verwalten ── -->
+  <div class="modal-overlay" id="catManagerOverlay">
+    <div class="modal glass-panel modal-wide">
+      <button class="modal-close" id="catManagerClose">✕</button>
+      <h3>Kategorien verwalten</h3>
+      <p class="modal-hint">Klicke auf ✎ zum Bearbeiten oder ✕ zum Löschen. Alle Zuordnungen einer gelöschten Kategorie werden entfernt.</p>
+      <button class="small-btn modal-add-btn" id="addCategoryBtn">+ Neue Kategorie</button>
+      <div class="store-manager-list" id="catManagerList"></div>
+    </div>
+  </div>
+
+  <!-- ── Modal: Neue / Kategorie bearbeiten ── -->
   <div class="modal-overlay" id="addCategoryOverlay">
     <div class="modal glass-panel">
       <button class="modal-close" id="addCategoryClose">✕</button>
-      <h3>Neue Kategorie</h3>
+      <h3 id="catEditTitle">Neue Kategorie</h3>
       <div class="form-group">
         <label>Name</label>
         <input type="text" id="newCatName" placeholder="z.B. Rechnungen" />
@@ -125,7 +150,7 @@
           <option value="critical">Kritisch</option>
         </select>
       </div>
-      <button class="primary-btn" id="saveCategoryBtn">Kategorie erstellen</button>
+      <button class="primary-btn" id="saveCategoryBtn">Kategorie speichern</button>
     </div>
   </div>
 
@@ -133,11 +158,9 @@
   <div class="modal-overlay" id="storeManagerOverlay">
     <div class="modal glass-panel modal-wide">
       <button class="modal-close" id="storeManagerClose">✕</button>
-      <div class="modal-header-row">
-        <h3>Stores verwalten</h3>
-        <button class="small-btn" id="addStoreBtn">+ Neuer Store</button>
-      </div>
+      <h3>Stores verwalten</h3>
       <p class="modal-hint">Stores sind die Speicherorte, denen du Datenkategorien zuordnest. Füge eigene Geräte, Cloud-Dienste oder lokale Laufwerke hinzu.</p>
+      <button class="small-btn modal-add-btn" id="addStoreBtn">+ Neuer Store</button>
       <div class="store-manager-list" id="storeManagerList"></div>
     </div>
   </div>
@@ -154,9 +177,11 @@
       <div class="form-group">
         <label>Typ</label>
         <select id="storeEditType">
-          <option value="cloud">☁️ Cloud</option>
-          <option value="local">💻 Lokal</option>
-          <option value="device">📱 Gerät</option>
+          <option value="cloud">☁️ Cloud-Dienst</option>
+          <option value="local">💻 Lokal / Mac / PC</option>
+          <option value="nas">🖥️ NAS / Heimserver</option>
+          <option value="device">📱 Mobiles Gerät</option>
+          <option value="external">💿 Externes Medium (USB, HDD)</option>
           <option value="other">📦 Sonstiges</option>
         </select>
       </div>
@@ -175,6 +200,6 @@
   <!-- ── Toast ── -->
   <div class="toast-container" id="toastContainer"></div>
 
-  <script src="app.js?v=4"></script>
+  <script src="app.js?v=8"></script>
 </body>
 </html>
