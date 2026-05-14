@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#0a0a1a" />
+  <meta name="description" content="DataCommander – Deine Datenstrategie auf einen Blick" />
+  <link rel="manifest" href="manifest.json" />
+  <title>DataCommander</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="app-bg"></div>
+
+  <!-- ── Header ── -->
+  <header class="glass-header">
+    <div class="header-inner">
+      <div class="logo">
+        <span class="logo-icon">⬡</span>
+        <span class="logo-text">DataCommander</span>
+      </div>
+      <nav class="header-nav">
+        <button class="nav-btn active" data-view="matrix">Matrix</button>
+        <button class="nav-btn" data-view="overview">Übersicht</button>
+        <button class="nav-btn" data-view="rules">Regeln</button>
+        <button class="nav-btn" data-view="stats">Statistik</button>
+      </nav>
+      <div class="header-actions">
+        <button class="icon-btn" id="exportBtn" title="Exportieren">↑</button>
+        <button class="icon-btn" id="importBtn" title="Importieren">↓</button>
+        <button class="icon-btn" id="resetBtn" title="Zurücksetzen">↺</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- ── Main ── -->
+  <main class="main-content">
+
+    <!-- VIEW: Matrix -->
+    <section class="view active" id="view-matrix">
+      <div class="matrix-toolbar">
+        <div class="toolbar-left">
+          <h2 class="view-title">Daten-Matrix</h2>
+          <p class="view-subtitle">Ziehe Kategorien in die gewünschten Felder</p>
+        </div>
+        <div class="toolbar-right">
+          <button class="pill-btn active" data-filter="all">Alle</button>
+          <button class="pill-btn" data-filter="unassigned">Nicht zugeordnet</button>
+          <button class="pill-btn" data-filter="critical">Kritisch</button>
+        </div>
+      </div>
+
+      <div class="matrix-layout">
+        <!-- Sidebar: Kategorien -->
+        <aside class="categories-panel glass-panel">
+          <div class="panel-header">
+            <span>Kategorien</span>
+            <button class="small-btn" id="addCategoryBtn">+ Neu</button>
+          </div>
+          <div class="categories-list" id="categoriesList"></div>
+          <div class="panel-footer">
+            <button class="manage-stores-btn" id="manageStoresBtn">🗄 Stores verwalten</button>
+          </div>
+        </aside>
+
+        <!-- Matrix Grid -->
+        <div class="matrix-container">
+          <div class="matrix-grid" id="matrixGrid"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- VIEW: Übersicht -->
+    <section class="view" id="view-overview">
+      <h2 class="view-title">Übersicht</h2>
+      <div class="overview-grid" id="overviewGrid"></div>
+    </section>
+
+    <!-- VIEW: Regeln -->
+    <section class="view" id="view-rules">
+      <h2 class="view-title">Backup &amp; Lösch-Regeln</h2>
+      <div class="rules-container" id="rulesContainer"></div>
+    </section>
+
+    <!-- VIEW: Statistik -->
+    <section class="view" id="view-stats">
+      <h2 class="view-title">Statistik</h2>
+      <div class="stats-grid" id="statsGrid"></div>
+    </section>
+
+  </main>
+
+  <!-- ── Modal: Kategorie Detail ── -->
+  <div class="modal-overlay" id="modalOverlay">
+    <div class="modal glass-panel" id="modal">
+      <button class="modal-close" id="modalClose">✕</button>
+      <div id="modalContent"></div>
+    </div>
+  </div>
+
+  <!-- ── Modal: Neue Kategorie ── -->
+  <div class="modal-overlay" id="addCategoryOverlay">
+    <div class="modal glass-panel">
+      <button class="modal-close" id="addCategoryClose">✕</button>
+      <h3>Neue Kategorie</h3>
+      <div class="form-group">
+        <label>Name</label>
+        <input type="text" id="newCatName" placeholder="z.B. Rechnungen" />
+      </div>
+      <div class="form-group">
+        <label>Icon</label>
+        <div class="icon-picker" id="iconPicker"></div>
+      </div>
+      <div class="form-group">
+        <label>Farbe</label>
+        <div class="color-picker" id="colorPicker"></div>
+      </div>
+      <div class="form-group">
+        <label>Priorität</label>
+        <select id="newCatPriority">
+          <option value="low">Niedrig</option>
+          <option value="medium" selected>Mittel</option>
+          <option value="high">Hoch</option>
+          <option value="critical">Kritisch</option>
+        </select>
+      </div>
+      <button class="primary-btn" id="saveCategoryBtn">Kategorie erstellen</button>
+    </div>
+  </div>
+
+  <!-- ── Modal: Stores verwalten ── -->
+  <div class="modal-overlay" id="storeManagerOverlay">
+    <div class="modal glass-panel modal-wide">
+      <button class="modal-close" id="storeManagerClose">✕</button>
+      <div class="modal-header-row">
+        <h3>Stores verwalten</h3>
+        <button class="small-btn" id="addStoreBtn">+ Neuer Store</button>
+      </div>
+      <p class="modal-hint">Stores sind die Speicherorte, denen du Datenkategorien zuordnest. Füge eigene Geräte, Cloud-Dienste oder lokale Laufwerke hinzu.</p>
+      <div class="store-manager-list" id="storeManagerList"></div>
+    </div>
+  </div>
+
+  <!-- ── Modal: Store bearbeiten / neu ── -->
+  <div class="modal-overlay" id="storeEditOverlay">
+    <div class="modal glass-panel">
+      <button class="modal-close" id="storeEditClose">✕</button>
+      <h3 id="storeEditTitle">Store bearbeiten</h3>
+      <div class="form-group">
+        <label>Name</label>
+        <input type="text" id="storeEditName" placeholder="z.B. Mein NAS" />
+      </div>
+      <div class="form-group">
+        <label>Typ</label>
+        <select id="storeEditType">
+          <option value="cloud">☁️ Cloud</option>
+          <option value="local">💻 Lokal</option>
+          <option value="device">📱 Gerät</option>
+          <option value="other">📦 Sonstiges</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Icon</label>
+        <div class="icon-picker" id="storeIconPicker"></div>
+      </div>
+      <div class="form-group">
+        <label>Farbe</label>
+        <div class="color-picker" id="storeColorPicker"></div>
+      </div>
+      <button class="primary-btn" id="saveStoreEditBtn">Speichern</button>
+    </div>
+  </div>
+
+  <!-- ── Toast ── -->
+  <div class="toast-container" id="toastContainer"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>
