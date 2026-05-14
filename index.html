@@ -8,7 +8,8 @@
   <meta name="description" content="DataCommander – Deine Datenstrategie auf einen Blick" />
   <link rel="manifest" href="manifest.json" />
   <title>DataCommander</title>
-  <link rel="stylesheet" href="styles.css?v=8" />
+  <link rel="stylesheet" href="styles.css?v=9" />
+  <link rel="icon" type="image/svg" href="favicon.svg">
   <script>
     // Boot guard: if stored data has no stores, wipe it so app.js seeds fresh defaults
     try {
@@ -74,7 +75,6 @@
           <div class="categories-list" id="categoriesList"></div>
           <div class="panel-footer">
             <button class="panel-action-btn btn-cyan" id="manageCategoriesBtn">☰ Kategorien verwalten</button>
-            <button class="panel-action-btn btn-amber" id="manageStoresBtn">🗄 Stores verwalten</button>
           </div>
         </aside>
 
@@ -200,6 +200,6 @@
   <!-- ── Toast ── -->
   <div class="toast-container" id="toastContainer"></div>
 
-  <script src="app.js?v=8"></script>
+  <script src="app.js?v=9"></script>
 </body>
 </html>

@@ -383,6 +383,14 @@ function renderMatrixGrid() {
       grid.appendChild(cell);
     });
   });
+
+  // "Stores verwalten" button row – spans full width below last store
+  const manageRow = document.createElement('div');
+  manageRow.className = 'matrix-manage-stores-row';
+  manageRow.style.gridColumn = `1 / ${STAGES.length + 2}`;
+  manageRow.innerHTML = `<button class="panel-action-btn btn-amber" id="manageStoresBtn">🗄 Stores verwalten</button>`;
+  manageRow.querySelector('#manageStoresBtn').addEventListener('click', openStoreManager);
+  grid.appendChild(manageRow);
 }
 
 function makeCellEmpty() {
@@ -1064,8 +1072,7 @@ function init() {
     if (e.target === document.getElementById('modalOverlay')) closeModal();
   });
 
-  // Store manager
-  document.getElementById('manageStoresBtn').addEventListener('click', openStoreManager);
+  // Store manager – button is rendered inside the matrix grid, listener attached there
   document.getElementById('storeManagerClose').addEventListener('click', () =>
     document.getElementById('storeManagerOverlay').classList.remove('open'));
   document.getElementById('storeManagerOverlay').addEventListener('click', e => {
