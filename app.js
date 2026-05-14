@@ -96,12 +96,24 @@ let state = {
 
 function loadState() {
   try {
-    const saved = localStorage.getItem('datacommander_v3');
-    if (saved) {
-      const p = JSON.parse(saved);
+    // Migrate from v2 (had no stores in state) → v3
+    const v2 = localStorage.getItem('datacommander_v2');
+    const v3 = localStorage.getItem('datacommander_v3');
+
+    if (v3) {
+      const p = JSON.parse(v3);
       state.categories  = p.categories  || clone(DEFAULT_CATEGORIES);
-      state.stores      = p.stores      || clone(DEFAULT_STORES);
+      state.stores      = (p.stores && p.stores.length) ? p.stores : clone(DEFAULT_STORES);
       state.assignments = p.assignments || {};
+    } else if (v2) {
+      // Migrate: carry over categories + assignments, seed default stores
+      const p = JSON.parse(v2);
+      state.categories  = p.categories  || clone(DEFAULT_CATEGORIES);
+      state.stores      = clone(DEFAULT_STORES);
+      state.assignments = p.assignments || {};
+      // Save migrated state under v3 and drop v2
+      saveState();
+      localStorage.removeItem('datacommander_v2');
     } else {
       state.categories  = clone(DEFAULT_CATEGORIES);
       state.stores      = clone(DEFAULT_STORES);

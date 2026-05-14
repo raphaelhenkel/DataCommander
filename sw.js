@@ -1,6 +1,6 @@
-/* DataCommander – Service Worker */
+/* DataCommander – Service Worker v4 */
 
-const CACHE_NAME = 'datacommander-v2';
+const CACHE_NAME = 'datacommander-v4';
 const ASSETS = [
   '/',
   '/index.html',
@@ -17,6 +17,7 @@ self.addEventListener('install', event => {
 });
 
 self.addEventListener('activate', event => {
+  // Delete ALL old caches
   event.waitUntil(
     caches.keys().then(keys =>
       Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k)))
