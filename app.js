@@ -5,26 +5,18 @@
 
 // ── Static Definitions ────────────────────────────────────────
 
-const STAGES = [
+// DEFAULT_STAGES moved to state – now fully editable
+const DEFAULT_STAGES = [
   { id: 'creation',   label: 'Erstellung',   emoji: '✏️',  color: '#6c63ff' },
   { id: 'processing', label: 'Verarbeitung', emoji: '⚙️',  color: '#00d4ff' },
-  { id: 'active',     label: 'Aktiv',        emoji: '✅',  color: '#43e97b' },
   { id: 'archiving',  label: 'Archivierung', emoji: '📦',  color: '#f9ca24' },
-  { id: 'deletion',   label: 'Löschung',     emoji: '🗑️', color: '#ff6b6b' },
 ];
 
 // Default stores – saved into state on first run, fully editable after
 const DEFAULT_STORES = [
-  { id: 'local',     label: 'Lokal (Mac)',      icon: '💻', color: '#7c6fff', type: 'local'    },
-  { id: 'icloud',    label: 'iCloud',           icon: '☁️', color: '#00d4ff', type: 'cloud'    },
-  { id: 'google',    label: 'Google Drive',     icon: '☁️', color: '#43e97b', type: 'cloud'    },
-  { id: 'synology',  label: 'Synology Drive',   icon: '☁️', color: '#f9ca24', type: 'cloud'    },
-  { id: 'dropbox',   label: 'Dropbox',          icon: '☁️', color: '#0061ff', type: 'cloud'    },
-  { id: 'onedrive',  label: 'OneDrive',         icon: '☁️', color: '#0078d4', type: 'cloud'    },
-  { id: 'nas',       label: 'NAS / Heimnetz',   icon: '🖥️', color: '#ff9f43', type: 'nas'      },
-  { id: 'usb',       label: 'USB / Externe HDD',icon: '💿', color: '#a29bfe', type: 'external' },
-  { id: 'encrypted', label: 'Verschlüsselt',    icon: '🔐', color: '#fd79a8', type: 'local'    },
-  { id: 'iphone',    label: 'iPhone',           icon: '📱', color: '#74b9ff', type: 'device'   },
+  { id: 'local',     label: 'Mac',         icon: '💻', color: '#7c6fff', type: 'local'    },
+  { id: 'iphone',    label: 'iPhone',      icon: '📱', color: '#74b9ff', type: 'device'   },
+  { id: 'icloud',    label: 'iCloud',      icon: '☁️', color: '#00d4ff', type: 'cloud'    },
 ];
 
 const DEFAULT_CATEGORIES = [
@@ -46,6 +38,11 @@ const DEFAULT_CATEGORIES = [
   { id: 'legal',     label: 'Rechtliches',     icon: '⚖️', color: '#fdcb6e', priority: 'critical', notes: '' },
   { id: 'media',     label: 'Sonstige Medien', icon: '🎞️', color: '#e17055', priority: 'low',      notes: '' },
   { id: 'social',    label: 'Social Media',    icon: '💬', color: '#00cec9', priority: 'low',      notes: '' },
+];
+
+// Emoji options for stages
+const STAGE_EMOJI_OPTIONS = [
+  '✏️','⚙️','📦','🗑️','✅','🔄','📋','⏱️','🎯','📊','💾','🔐','📤','📥','🔔',
 ];
 
 // Emoji options grouped by theme
@@ -88,6 +85,7 @@ const STORE_TYPE_OPTIONS = [
 // ── State ─────────────────────────────────────────────────────
 
 let state = {
+  stages:      [],   // now mutable
   categories:  [],
   stores:      [],   // now mutable
   assignments: {},   // { catId: { stageId: [storeId, ...] } }
@@ -106,12 +104,14 @@ function loadState() {
 
     if (v3) {
       const p = JSON.parse(v3);
+      state.stages      = (p.stages      && p.stages.length)      ? p.stages      : clone(DEFAULT_STAGES);
       state.categories  = (p.categories  && p.categories.length)  ? p.categories  : clone(DEFAULT_CATEGORIES);
       state.stores      = (p.stores      && p.stores.length)      ? p.stores      : clone(DEFAULT_STORES);
       state.assignments = p.assignments || {};
     } else if (v2) {
-      // Migrate: carry over categories + assignments, seed default stores
+      // Migrate: carry over categories + assignments, seed default stores + stages
       const p = JSON.parse(v2);
+      state.stages      = clone(DEFAULT_STAGES);
       state.categories  = p.categories  || clone(DEFAULT_CATEGORIES);
       state.stores      = clone(DEFAULT_STORES);
       state.assignments = p.assignments || {};
@@ -119,11 +119,13 @@ function loadState() {
       saveState();
       localStorage.removeItem('datacommander_v2');
     } else {
+      state.stages      = clone(DEFAULT_STAGES);
       state.categories  = clone(DEFAULT_CATEGORIES);
       state.stores      = clone(DEFAULT_STORES);
       state.assignments = {};
     }
   } catch {
+    state.stages      = clone(DEFAULT_STAGES);
     state.categories  = clone(DEFAULT_CATEGORIES);
     state.stores      = clone(DEFAULT_STORES);
     state.assignments = {};
@@ -132,6 +134,7 @@ function loadState() {
 
 function saveState() {
   localStorage.setItem('datacommander_v3', JSON.stringify({
+    stages:      state.stages,
     categories:  state.categories,
     stores:      state.stores,
     assignments: state.assignments,
@@ -173,16 +176,23 @@ function purgeStoreFromAssignments(storeId) {
   }
 }
 
+// Clean up assignments that reference a deleted stage
+function purgeStageFromAssignments(stageId) {
+  for (const catId in state.assignments) {
+    delete state.assignments[catId][stageId];
+  }
+}
+
 function getCategoryById(id) { return state.categories.find(c => c.id === id); }
 function getStoreById(id)    { return state.stores.find(s => s.id === id); }
-function getStageById(id)    { return STAGES.find(s => s.id === id); }
+function getStageById(id)    { return state.stages.find(s => s.id === id); }
 
 function getCoveragePercent(catId) {
   let assigned = 0;
-  for (const stage of STAGES) {
+  for (const stage of state.stages) {
     if (getAssignment(catId, stage.id).length > 0) assigned++;
   }
-  return Math.round((assigned / STAGES.length) * 100);
+  return state.stages.length > 0 ? Math.round((assigned / state.stages.length) * 100) : 0;
 }
 
 function getTotalAssignments() {
@@ -202,7 +212,7 @@ function getFilteredCategories() {
 // Count distinct stores used for a category across all stages
 function getUniqueStoreCount(catId) {
   const ids = new Set();
-  for (const stage of STAGES) {
+  for (const stage of state.stages) {
     for (const sid of getAssignment(catId, stage.id)) ids.add(sid);
   }
   return ids.size;
@@ -211,7 +221,7 @@ function getUniqueStoreCount(catId) {
 // Count how many cloud-type stores a category uses across all stages
 function getCloudStoreCount(catId) {
   const ids = new Set();
-  for (const stage of STAGES) {
+  for (const stage of state.stages) {
     for (const sid of getAssignment(catId, stage.id)) {
       const store = getStoreById(sid);
       if (store && store.type === 'cloud') ids.add(sid);
@@ -222,7 +232,7 @@ function getCloudStoreCount(catId) {
 
 function hasOffSiteStore(catId) {
   // "off-site" = cloud, external medium, or NAS (not purely local/device)
-  for (const stage of STAGES) {
+  for (const stage of state.stages) {
     for (const sid of getAssignment(catId, stage.id)) {
       const store = getStoreById(sid);
       if (store && (store.type === 'cloud' || store.type === 'external' || store.type === 'nas')) return true;
@@ -232,7 +242,7 @@ function hasOffSiteStore(catId) {
 }
 
 function hasEncryptedStore(catId) {
-  for (const stage of STAGES) {
+  for (const stage of state.stages) {
     for (const sid of getAssignment(catId, stage.id)) {
       const store = getStoreById(sid);
       if (store && (store.id === 'encrypted' || store.label.toLowerCase().includes('verschlüss'))) return true;
@@ -313,14 +323,14 @@ function renderCategoriesList() {
 
 function renderMatrixGrid() {
   const grid = document.getElementById('matrixGrid');
-  grid.style.gridTemplateColumns = `150px repeat(${STAGES.length}, 1fr)`;
+  grid.style.gridTemplateColumns = `150px repeat(${state.stages.length}, 1fr)`;
   grid.innerHTML = '';
 
   // Corner
   grid.appendChild(Object.assign(document.createElement('div'), { className: 'matrix-corner' }));
 
   // Stage headers
-  STAGES.forEach(stage => {
+  state.stages.forEach(stage => {
     const h = document.createElement('div');
     h.className = 'matrix-stage-header';
     h.style.cssText = `border-top: 2px solid ${stage.color}`;
@@ -338,7 +348,7 @@ function renderMatrixGrid() {
       <span class="store-type-badge store-type-${store.type}">${store.type}</span>`;
     grid.appendChild(label);
 
-    STAGES.forEach(stage => {
+    state.stages.forEach(stage => {
       const cell = document.createElement('div');
       cell.className = 'matrix-cell';
       cell.dataset.storeId = store.id;
@@ -384,12 +394,17 @@ function renderMatrixGrid() {
     });
   });
 
-  // "Stores verwalten" button row – spans full width below last store
+  // "Stores verwalten" + "Stages verwalten" button row – spans full width below last store
   const manageRow = document.createElement('div');
   manageRow.className = 'matrix-manage-stores-row';
-  manageRow.style.gridColumn = `1 / ${STAGES.length + 2}`;
-  manageRow.innerHTML = `<button class="panel-action-btn btn-amber" id="manageStoresBtn">🗄 Stores verwalten</button>`;
+  manageRow.style.gridColumn = `1 / ${state.stages.length + 2}`;
+  manageRow.style.display = 'flex';
+  manageRow.style.gap = '10px';
+  manageRow.innerHTML = `
+    <button class="panel-action-btn btn-amber" id="manageStoresBtn" style="flex:1">🗄 Stores verwalten</button>
+    <button class="panel-action-btn btn-purple" id="manageStagesBtn" style="flex:1">⏹ Stages verwalten</button>`;
   manageRow.querySelector('#manageStoresBtn').addEventListener('click', openStoreManager);
+  manageRow.querySelector('#manageStagesBtn').addEventListener('click', openStageManager);
   grid.appendChild(manageRow);
 }
 
@@ -434,7 +449,7 @@ function renderOverview() {
 
     let assignmentsHtml = '';
     let hasAny = false;
-    STAGES.forEach(stage => {
+    state.stages.forEach(stage => {
       const stores = getAssignment(cat.id, stage.id);
       if (stores.length > 0) {
         hasAny = true;
@@ -521,16 +536,19 @@ function computeInsights() {
       });
     });
 
-  // Categories with no deletion stage mapped
+  // Categories with no deletion stage mapped (look for archiving or similar)
   state.categories
-    .filter(c => getCoveragePercent(c.id) > 0 && getAssignment(c.id, 'deletion').length === 0)
+    .filter(c => getCoveragePercent(c.id) > 0)
     .slice(0, 3) // cap to avoid noise
     .forEach(c => {
-      insights.push({
-        level: 'info',
-        icon: '🗑️',
-        text: `<strong>${c.icon} ${c.label}</strong> hat noch keine Lösch-Stage definiert. Eine Aufbewahrungsfrist hilft, Datenmüll zu vermeiden.`,
-      });
+      const hasArchiving = state.stages.some(s => s.id === 'archiving' && getAssignment(c.id, s.id).length > 0);
+      if (!hasArchiving) {
+        insights.push({
+          level: 'info',
+          icon: '🗑️',
+          text: `<strong>${c.icon} ${c.label}</strong> hat noch keine Archivierungs-Stage definiert. Eine Aufbewahrungsfrist hilft, Datenmüll zu vermeiden.`,
+        });
+      }
     });
 
   // Single-cloud dependency for high/critical
@@ -610,10 +628,10 @@ function renderStats() {
   [
     { value: totalCats,         label: 'Kategorien' },
     { value: state.stores.length, label: 'Aktive Stores' },
+    { value: state.stages.length, label: 'Stages' },
     { value: totalAssign,       label: 'Zuordnungen' },
     { value: criticalCats,      label: 'Kritisch' },
     { value: assignedCats,      label: 'Mit Zuordnung' },
-    { value: coveredCats,       label: 'Vollständig' },
   ].forEach(s => {
     const card = document.createElement('div');
     card.className = 'stat-card glass-panel';
@@ -696,6 +714,104 @@ function renderStats() {
     });
     grid.appendChild(insSection);
   }
+}
+
+// ── Stage Management Modal ────────────────────────────────────
+
+function openStageManager() {
+  const overlay = document.getElementById('stageManagerOverlay');
+  renderStageManagerList();
+  overlay.classList.add('open');
+}
+
+function renderStageManagerList() {
+  const list = document.getElementById('stageManagerList');
+  list.innerHTML = '';
+  state.stages.forEach(stage => {
+    const row = document.createElement('div');
+    row.className = 'store-manager-row';
+    row.innerHTML = `
+      <span class="store-mgr-icon">${stage.emoji}</span>
+      <span class="store-mgr-label">${stage.label}</span>
+      <span style="display:inline-block;width:16px;height:16px;border-radius:2px;background:${stage.color}"></span>
+      <div class="store-mgr-actions">
+        <button class="icon-btn" data-edit-stage="${stage.id}" title="Bearbeiten">✎</button>
+        <button class="icon-btn danger" data-delete-stage="${stage.id}" title="Löschen">✕</button>
+      </div>`;
+    row.querySelector('[data-edit-stage]').addEventListener('click', () => openStageEditForm(stage.id));
+    row.querySelector('[data-delete-stage]').addEventListener('click', () => {
+      if (confirm(`Stage "${stage.label}" löschen? Alle Zuordnungen zu dieser Stage werden entfernt.`)) {
+        purgeStageFromAssignments(stage.id);
+        state.stages = state.stages.filter(s => s.id !== stage.id);
+        saveState();
+        renderStageManagerList();
+        renderCurrentView();
+        showToast(`${stage.emoji} ${stage.label} gelöscht`, 'info');
+      }
+    });
+    list.appendChild(row);
+  });
+}
+
+function openStageEditForm(stageId) {
+  const stage = stageId ? getStageById(stageId) : null;
+  const overlay = document.getElementById('stageEditOverlay');
+  const title = document.getElementById('stageEditTitle');
+  title.textContent = stage ? 'Stage bearbeiten' : 'Neue Stage';
+
+  // Pre-fill
+  document.getElementById('stageEditName').value = stage?.label || '';
+
+  // Emoji picker
+  const emojiPicker = document.getElementById('stageEmojiPicker');
+  emojiPicker.innerHTML = '';
+  let selectedEmoji = stage?.emoji || '✏️';
+  STAGE_EMOJI_OPTIONS.forEach(emoji => {
+    const opt = document.createElement('div');
+    opt.className = 'icon-option' + (emoji === selectedEmoji ? ' selected' : '');
+    opt.textContent = emoji;
+    opt.addEventListener('click', () => {
+      emojiPicker.querySelectorAll('.icon-option').forEach(o => o.classList.remove('selected'));
+      opt.classList.add('selected');
+      selectedEmoji = emoji;
+    });
+    emojiPicker.appendChild(opt);
+  });
+
+  // Color picker
+  const colorPicker = document.getElementById('stageColorPicker');
+  colorPicker.innerHTML = '';
+  let selectedColor = stage?.color || '#6c63ff';
+  COLOR_OPTIONS.forEach(color => {
+    const opt = document.createElement('div');
+    opt.className = 'color-option' + (color === selectedColor ? ' selected' : '');
+    opt.style.background = color;
+    opt.addEventListener('click', () => {
+      colorPicker.querySelectorAll('.color-option').forEach(o => o.classList.remove('selected'));
+      opt.classList.add('selected');
+      selectedColor = color;
+    });
+    colorPicker.appendChild(opt);
+  });
+
+  document.getElementById('saveStageEditBtn').onclick = () => {
+    const name = document.getElementById('stageEditName').value.trim();
+    if (!name) { showToast('Bitte einen Namen eingeben', 'error'); return; }
+    if (stage) {
+      stage.label = name;
+      stage.emoji  = selectedEmoji;
+      stage.color = selectedColor;
+    } else {
+      state.stages.push({ id: 'stage_' + Date.now(), label: name, emoji: selectedEmoji, color: selectedColor });
+    }
+    saveState();
+    overlay.classList.remove('open');
+    renderStageManagerList();
+    renderCurrentView();
+    showToast(stage ? `${selectedEmoji} ${name} aktualisiert` : `${selectedEmoji} ${name} erstellt`, 'success');
+  };
+
+  overlay.classList.add('open');
 }
 
 // ── Store Management Modal ────────────────────────────────────
@@ -808,7 +924,7 @@ function openDetailModal(catId) {
   const content = document.getElementById('modalContent');
 
   let assignmentsHtml = '';
-  STAGES.forEach(stage => {
+  state.stages.forEach(stage => {
     const stores = getAssignment(catId, stage.id);
     if (stores.length > 0) {
       const storeTags = stores.map(sid => {
@@ -976,7 +1092,7 @@ function openCategoryEditForm(catId) {
 // ── Export / Import / Reset ───────────────────────────────────
 
 function exportData() {
-  const data = JSON.stringify({ categories: state.categories, stores: state.stores, assignments: state.assignments }, null, 2);
+  const data = JSON.stringify({ stages: state.stages, categories: state.categories, stores: state.stores, assignments: state.assignments }, null, 2);
   const blob = new Blob([data], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -998,6 +1114,7 @@ function importData() {
       try {
         const p = JSON.parse(ev.target.result);
         if (p.categories && p.assignments) {
+          state.stages      = p.stages || clone(DEFAULT_STAGES);
           state.categories  = p.categories;
           state.stores      = p.stores || clone(DEFAULT_STORES);
           state.assignments = p.assignments;
@@ -1016,6 +1133,7 @@ function importData() {
 
 function resetData() {
   if (confirm('Alle Daten zurücksetzen? Dies kann nicht rückgängig gemacht werden.')) {
+    state.stages      = clone(DEFAULT_STAGES);
     state.categories  = clone(DEFAULT_CATEGORIES);
     state.stores      = clone(DEFAULT_STORES);
     state.assignments = {};
@@ -1070,6 +1188,23 @@ function init() {
   document.getElementById('modalClose').addEventListener('click', closeModal);
   document.getElementById('modalOverlay').addEventListener('click', e => {
     if (e.target === document.getElementById('modalOverlay')) closeModal();
+  });
+
+  // Stage manager – button is rendered inside the matrix grid, listener attached there
+  document.getElementById('stageManagerClose').addEventListener('click', () =>
+    document.getElementById('stageManagerOverlay').classList.remove('open'));
+  document.getElementById('stageManagerOverlay').addEventListener('click', e => {
+    if (e.target === document.getElementById('stageManagerOverlay'))
+      document.getElementById('stageManagerOverlay').classList.remove('open');
+  });
+  document.getElementById('addStageBtn').addEventListener('click', () => openStageEditForm(null));
+
+  // Stage edit modal
+  document.getElementById('stageEditClose').addEventListener('click', () =>
+    document.getElementById('stageEditOverlay').classList.remove('open'));
+  document.getElementById('stageEditOverlay').addEventListener('click', e => {
+    if (e.target === document.getElementById('stageEditOverlay'))
+      document.getElementById('stageEditOverlay').classList.remove('open');
   });
 
   // Store manager – button is rendered inside the matrix grid, listener attached there
